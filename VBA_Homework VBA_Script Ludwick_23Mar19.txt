@@ -1,0 +1,128 @@
+Sub Stocky()
+
+    Dim xsheet As Worksheet
+
+   ‘Create loop to run through each worksheet
+    For Each xsheet In ThisWorkbook.Worksheets
+        xsheet.Select
+
+       'Assumes each worksheet is sorted by ticker then date
+        Dim YearlyChange As Long
+
+       'Place column headings for stock roll up table
+        Cells(1, 9).Value = "Ticker"
+        Cells(1, 10).Value = "Yearly Change"
+        Cells(1, 11).Value = "Percent Change"
+        Cells(1, 12).Value = "Total Stock Volume"
+
+       ‘Initialize percent format
+        Range("K:K").NumberFormat = "0.00%"
+        Columns(10).EntireColumn.AutoFit
+        Columns(11).EntireColumn.AutoFit
+        Columns(12).EntireColumn.AutoFit
+
+       ‘Initialize values, Stock is used to define the rows of the stock roll up table. 
+        Stock = 0
+        ChangePercMax = 0
+        ChangePercMin = 0
+        VolumeMax = 0
+
+       ‘Loop to run through all data rows
+        For Row = 2 To 800000
+    
+            PreRow = Row - 1
+            PostRow = Row + 1
+        
+           'Identify the first row for the stock, capture key opening data
+            If Cells(Row, 1).Value <> Cells(PreRow, 1).Value Then
+                Ticker = Cells(Row, 1).Value
+                OpenPrice = Cells(Row, 3).Value
+                FirstVolumeRow = Row
+
+               ‘Increment the row in the Stock table being created
+                Stock = 1 + Stock  
+                Volume = Cells(Row, 7).Value
+
+           ‘For rows that are neither first nor last for stock, just keep adding to volume
+            ElseIf Cells(Row, 1).Value = Cells(PostRow, 1).Value Then
+                Volume = Volume + Cells(Row, 7).Value
+
+           ‘For the last row of the stock, wrap up year-end values and or rows to find those values
+            ElseIf Cells(Row, 1).Value <> Cells(PostRow, 1).Value Then
+                Volume = Volume + Cells(Row, 7).Value
+                ClosePrice = Cells(Row, 6).Value
+                LastVolumeRow = Row
+
+               ‘Brings in ticker symbol into the stock summary table
+                Cells(Stock + 1, 9).Value = Ticker 
+
+               ‘Computing percent annual change in stock price, must account for stocks with zero opening
+
+                   ‘did this by changing percent change to zero, may not be appropriate from business standpoint
+                Cells(Stock + 1, 10).Value = ClosePrice - OpenPrice
+                If OpenPrice = 0 Then
+                    ChangePerc = 0
+                Else
+                    ChangePerc = (ClosePrice - OpenPrice) / OpenPrice
+                End If
+                Cells(Stock + 1, 11).Value = ChangePerc   ‘Bring Change Percent into roll up table
+                Cells(Stock + 1, 12).Value = Volume   ‘Bring Total Volume into roll up table
+            
+            End If
+
+           ‘Set up the stock highlights table to the far right
+           ‘Compute and update min and max change percentages and volumes 
+            If ChangePerc > ChangePercMax Then
+                ChangePercMax = ChangePerc
+                ChangeMaxRow = Row
+            End If
+            
+            If ChangePerc < ChangePercMin Then
+                ChangePercMin = ChangePerc
+                ChangeMinRow = Row
+            End If
+        
+            If Volume > VolumeMax Then
+                VolumeMax = Volume
+                VolumeMaxRow = Row
+            End If
+
+           ‘Add color to indicate if the stock increased or decreased over the year, if no change then no color
+            If Cells(Stock + 1, 10).Value > 0 Then
+                Cells(Stock + 1, 10).Interior.ColorIndex = 4
+            
+            ElseIf Cells(Stock + 1, 10).Value < 0 Then
+                Cells(Stock + 1, 10).Interior.ColorIndex = 3
+                Cells(Stock + 1, 12).Font.ColorIndex = 1
+            
+            End If
+            
+        Next Row
+
+       ‘Labels for stock highlights table
+        Cells(1, 16).Value = "Ticker"
+        Cells(1, 17).Value = "Value"
+        Cells(2, 15).Value = "Greatest % Increase"
+        Cells(3, 15).Value = "Greatest % Decrease"
+        Cells(4, 15).Value = "Greatest Total Volume"
+    
+       ‘Values input into the stock highlights table
+        Cells(2, 16).Value = Cells(ChangeMaxRow, 1).Value
+        Cells(3, 16).Value = Cells(ChangeMinRow, 1).Value
+        Cells(4, 16).Value = Cells(VolumeMaxRow, 1).Value
+        Cells(2, 17).Value = ChangePercMax
+        Cells(3, 17).Value = ChangePercMin
+        Cells(4, 17).Value = VolumeMax
+    
+       ‘Standardizing formats for the stock highlights table
+        Cells(2, 17).NumberFormat = "0.00%"
+        Cells(3, 17).NumberFormat = "0.00%"
+        Columns(15).EntireColumn.AutoFit
+        Columns(16).EntireColumn.AutoFit
+        Columns(17).EntireColumn.AutoFit
+    
+‘Done for this sheet, on to the next
+    Next xsheet
+ 
+End Sub
+
